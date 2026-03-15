@@ -3,7 +3,6 @@ package auca.ac.rw.onlineJobPortal.service;
 import auca.ac.rw.onlineJobPortal.enums.LocationType;
 import auca.ac.rw.onlineJobPortal.model.Location;
 import auca.ac.rw.onlineJobPortal.repository.LocationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,8 +11,11 @@ import java.util.Optional;
 @Service
 public class LocationService {
 
-    @Autowired
-    private LocationRepository locationRepository;
+    private final LocationRepository locationRepository;
+
+    public LocationService(LocationRepository locationRepository) {
+        this.locationRepository = locationRepository;
+    }
 
     // Create with optional parentId to build hierarchy
     public Location create(Location location, Long parentId) {
@@ -56,7 +58,21 @@ public class LocationService {
         return locationRepository.save(location);
     }
 
-    public void deleteById(Long id) {
-        locationRepository.deleteById(id);
+    public Location updateLocation(Long id, Location location) {
+        Location existing = locationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Location not found"));
+
+        if (location.getName() != null) existing.setName(location.getName());
+        if (location.getCode() != null) existing.setCode(location.getCode());
+        if (location.getLocationType() != null) existing.setLocationType(location.getLocationType());
+        if (location.getParentLocation() != null) existing.setParentLocation(location.getParentLocation());
+
+        return locationRepository.save(existing);
+    }
+
+    public void deleteLocation(Long id) {
+        Location location = locationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Location not found"));
+        locationRepository.delete(location);
     }
 }

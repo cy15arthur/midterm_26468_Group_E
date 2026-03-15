@@ -2,7 +2,6 @@ package auca.ac.rw.onlineJobPortal.controller;
 
 import auca.ac.rw.onlineJobPortal.model.JobSeekerProfile;
 import auca.ac.rw.onlineJobPortal.service.JobSeekerProfileService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +13,11 @@ import java.util.UUID;
 @RequestMapping("/job-seeker-profiles")
 public class JobSeekerController {
 
-    @Autowired
-    private JobSeekerProfileService jobSeekerProfileService;
+    private final JobSeekerProfileService jobSeekerProfileService;
+
+    public JobSeekerController(JobSeekerProfileService jobSeekerProfileService) {
+        this.jobSeekerProfileService = jobSeekerProfileService;
+    }
 
     @GetMapping
     public ResponseEntity<List<JobSeekerProfile>> getAllProfiles() {
@@ -23,44 +25,49 @@ public class JobSeekerController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<JobSeekerProfile> getProfileById(@PathVariable UUID id) {
+    public ResponseEntity<?> getProfileById(@PathVariable UUID id) {
         Optional<JobSeekerProfile> profile = jobSeekerProfileService.findById(id);
-        return profile.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        if (profile.isEmpty()) {
+            return ResponseEntity.status(404).body("JobSeekerProfile not found");
+        }
+        return ResponseEntity.ok(profile.get());
     }
 
     @PostMapping
-    public ResponseEntity<JobSeekerProfile> createProfile(@RequestBody JobSeekerProfile profile) {
-        return ResponseEntity.ok(jobSeekerProfileService.save(profile));
+    public ResponseEntity<?> createProfile(@RequestBody JobSeekerProfile profile) {
+        try {
+            JobSeekerProfile saved = jobSeekerProfileService.save(profile);
+            return ResponseEntity.status(201).body(saved);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<JobSeekerProfile> updateProfile(@PathVariable UUID id, @RequestBody JobSeekerProfile profile) {
-        if (!jobSeekerProfileService.findById(id).isPresent()) {
+    public ResponseEntity<?> updateProfile(@PathVariable UUID id, @RequestBody JobSeekerProfile profile) {
+        try {
+            return ResponseEntity.ok(jobSeekerProfileService.updateProfile(id, profile));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        profile.setId(id);
-        return ResponseEntity.ok(jobSeekerProfileService.save(profile));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<JobSeekerProfile> patchProfile(@PathVariable UUID id, @RequestBody JobSeekerProfile profile) {
-        Optional<JobSeekerProfile> existingProfileOpt = jobSeekerProfileService.findById(id);
-        if (!existingProfileOpt.isPresent()) {
+    public ResponseEntity<?> patchProfile(@PathVariable UUID id, @RequestBody JobSeekerProfile profile) {
+        try {
+            return ResponseEntity.ok(jobSeekerProfileService.updateProfile(id, profile));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        JobSeekerProfile existingProfile = existingProfileOpt.get();
-        if (profile.getSkills() != null) existingProfile.setSkills(profile.getSkills());
-        if (profile.getResume() != null) existingProfile.setResume(profile.getResume());
-        if (profile.getPhoto() != null) existingProfile.setPhoto(profile.getPhoto());
-        return ResponseEntity.ok(jobSeekerProfileService.save(existingProfile));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProfile(@PathVariable UUID id) {
-        if (!jobSeekerProfileService.findById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<String> deleteProfile(@PathVariable UUID id) {
+        try {
+            jobSeekerProfileService.deleteProfile(id);
+            return ResponseEntity.ok("Job seeker profile deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("Job seeker profile not found: " + e.getMessage());
         }
-        jobSeekerProfileService.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 }

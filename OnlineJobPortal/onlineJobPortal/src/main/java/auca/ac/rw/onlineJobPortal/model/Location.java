@@ -29,10 +29,6 @@ public class Location {
     @JoinColumn(name = "parent_id")
     private Location parentLocation;
 
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    @OneToMany(mappedBy = "parentLocation", cascade = CascadeType.ALL)
-    private List<Location> subLocations;
-
     public Location() {}
 
     public Long getId() {
@@ -75,11 +71,4 @@ public class Location {
         this.parentLocation = parentLocation;
     }
 
-    public List<Location> getSubLocations() {
-        return subLocations;
-    }
-
-    public void setSubLocations(List<Location> subLocations) {
-        this.subLocations = subLocations;
-    }
 }

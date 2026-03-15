@@ -2,7 +2,6 @@ package auca.ac.rw.onlineJobPortal.controller;
 
 import auca.ac.rw.onlineJobPortal.model.Job;
 import auca.ac.rw.onlineJobPortal.service.JobService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +14,11 @@ import java.util.UUID;
 @RequestMapping("/jobs")
 public class JobController {
 
-    @Autowired
-    private JobService jobService;
+    private final JobService jobService;
+
+    public JobController(JobService jobService) {
+        this.jobService = jobService;
+    }
 
    
     @GetMapping
@@ -26,9 +28,12 @@ public class JobController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<Job> getJobById(@PathVariable UUID id) {
+    public ResponseEntity<?> getJobById(@PathVariable UUID id) {
         Optional<Job> job = jobService.findById(id);
-        return job.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        if (job.isEmpty()) {
+            return ResponseEntity.status(404).body("Job not found");
+        }
+        return ResponseEntity.ok(job.get());
     }
 
     
@@ -59,45 +64,43 @@ public class JobController {
 
  
     @PostMapping
-    public ResponseEntity<Job> createJob(@RequestBody Job job) {
-        return ResponseEntity.ok(jobService.save(job));
+    public ResponseEntity<?> createJob(@RequestBody Job job) {
+        try {
+            Job saved = jobService.save(job);
+            return ResponseEntity.status(201).body(saved);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     
     @PutMapping("/{id}")
-    public ResponseEntity<Job> updateJob(@PathVariable UUID id, @RequestBody Job job) {
-        if (!jobService.findById(id).isPresent()) {
+    public ResponseEntity<?> updateJob(@PathVariable UUID id, @RequestBody Job job) {
+        try {
+            return ResponseEntity.ok(jobService.updateJob(id, job));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        job.setJobId(id);
-        return ResponseEntity.ok(jobService.save(job));
     }
 
    
     @PatchMapping("/{id}")
-    public ResponseEntity<Job> patchJob(@PathVariable UUID id, @RequestBody Job job) {
-        Optional<Job> existingJobOpt = jobService.findById(id);
-        if (!existingJobOpt.isPresent()) {
+    public ResponseEntity<?> patchJob(@PathVariable UUID id, @RequestBody Job job) {
+        try {
+            return ResponseEntity.ok(jobService.updateJob(id, job));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        Job existingJob = existingJobOpt.get();
-        if (job.getTitle() != null) existingJob.setTitle(job.getTitle());
-        if (job.getDescription() != null) existingJob.setDescription(job.getDescription());
-        if (job.getRequirements() != null) existingJob.setRequirements(job.getRequirements());
-        if (job.getMinSalary() != null) existingJob.setMinSalary(job.getMinSalary());
-        if (job.getMaxSalary() != null) existingJob.setMaxSalary(job.getMaxSalary());
-        if (job.getEmploymentType() != null) existingJob.setEmploymentType(job.getEmploymentType());
-        if (job.getLocation() != null) existingJob.setLocation(job.getLocation());
-        return ResponseEntity.ok(jobService.save(existingJob));
     }
 
    
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteJob(@PathVariable UUID id) {
-        if (!jobService.findById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<String> deleteJob(@PathVariable UUID id) {
+        try {
+            jobService.deleteJob(id);
+            return ResponseEntity.ok("Job deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("Job not found: " + e.getMessage());
         }
-        jobService.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 }

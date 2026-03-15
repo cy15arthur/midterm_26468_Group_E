@@ -3,7 +3,6 @@ package auca.ac.rw.onlineJobPortal.controller;
 import auca.ac.rw.onlineJobPortal.enums.LocationType;
 import auca.ac.rw.onlineJobPortal.model.Location;
 import auca.ac.rw.onlineJobPortal.service.LocationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +13,11 @@ import java.util.Optional;
 @RequestMapping("/locations")
 public class LocationController {
 
-    @Autowired
-    private LocationService locationService;
+    private final LocationService locationService;
+
+    public LocationController(LocationService locationService) {
+        this.locationService = locationService;
+    }
 
     
     @GetMapping
@@ -25,9 +27,12 @@ public class LocationController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<Location> getLocationById(@PathVariable Long id) {
+    public ResponseEntity<?> getLocationById(@PathVariable Long id) {
         Optional<Location> location = locationService.findById(id);
-        return location.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        if (location.isEmpty()) {
+            return ResponseEntity.status(404).body("Location not found");
+        }
+        return ResponseEntity.ok(location.get());
     }
 
     
@@ -58,7 +63,8 @@ public class LocationController {
             @RequestBody Location location,
             @RequestParam(required = false) Long parentId) {
         try {
-            return ResponseEntity.ok(locationService.create(location, parentId));
+            Location saved = locationService.create(location, parentId);
+            return ResponseEntity.status(201).body(saved);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -66,36 +72,32 @@ public class LocationController {
 
  
     @PutMapping("/{id}")
-    public ResponseEntity<Location> updateLocation(@PathVariable Long id, @RequestBody Location location) {
-        if (!locationService.findById(id).isPresent()) {
+    public ResponseEntity<?> updateLocation(@PathVariable Long id, @RequestBody Location location) {
+        try {
+            return ResponseEntity.ok(locationService.updateLocation(id, location));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        location.setId(id);
-        return ResponseEntity.ok(locationService.save(location));
     }
 
     
     @PatchMapping("/{id}")
-    public ResponseEntity<Location> patchLocation(@PathVariable Long id, @RequestBody Location location) {
-        Optional<Location> existingOpt = locationService.findById(id);
-        if (!existingOpt.isPresent()) {
+    public ResponseEntity<?> patchLocation(@PathVariable Long id, @RequestBody Location location) {
+        try {
+            return ResponseEntity.ok(locationService.updateLocation(id, location));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        Location existing = existingOpt.get();
-        if (location.getName() != null) existing.setName(location.getName());
-        if (location.getCode() != null) existing.setCode(location.getCode());
-        if (location.getLocationType() != null) existing.setLocationType(location.getLocationType());
-        if (location.getParentLocation() != null) existing.setParentLocation(location.getParentLocation());
-        return ResponseEntity.ok(locationService.save(existing));
     }
 
    
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteLocation(@PathVariable Long id) {
-        if (!locationService.findById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<String> deleteLocation(@PathVariable Long id) {
+        try {
+            locationService.deleteLocation(id);
+            return ResponseEntity.ok("Location deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("Location not found: " + e.getMessage());
         }
-        locationService.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 }

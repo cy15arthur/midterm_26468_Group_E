@@ -2,7 +2,6 @@ package auca.ac.rw.onlineJobPortal.controller;
 
 import auca.ac.rw.onlineJobPortal.model.Category;
 import auca.ac.rw.onlineJobPortal.service.CategoryService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +13,11 @@ import java.util.UUID;
 @RequestMapping("/categories")
 public class CategoryController {
 
-    @Autowired
-    private CategoryService categoryService;
+    private final CategoryService categoryService;
+
+    public CategoryController(CategoryService categoryService) {
+        this.categoryService = categoryService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {
@@ -23,42 +25,49 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable UUID id) {
+    public ResponseEntity<?> getCategoryById(@PathVariable UUID id) {
         Optional<Category> category = categoryService.findById(id);
-        return category.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        if (category.isEmpty()) {
+            return ResponseEntity.status(404).body("Category not found");
+        }
+        return ResponseEntity.ok(category.get());
     }
 
     @PostMapping
-    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
-        return ResponseEntity.ok(categoryService.save(category));
+    public ResponseEntity<?> createCategory(@RequestBody Category category) {
+        try {
+            Category saved = categoryService.save(category);
+            return ResponseEntity.status(201).body(saved);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Category> updateCategory(@PathVariable UUID id, @RequestBody Category category) {
-        if (!categoryService.findById(id).isPresent()) {
+    public ResponseEntity<?> updateCategory(@PathVariable UUID id, @RequestBody Category category) {
+        try {
+            return ResponseEntity.ok(categoryService.updateCategory(id, category));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        category.setCategoryId(id);
-        return ResponseEntity.ok(categoryService.save(category));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Category> patchCategory(@PathVariable UUID id, @RequestBody Category category) {
-        Optional<Category> existingCategoryOpt = categoryService.findById(id);
-        if (!existingCategoryOpt.isPresent()) {
+    public ResponseEntity<?> patchCategory(@PathVariable UUID id, @RequestBody Category category) {
+        try {
+            return ResponseEntity.ok(categoryService.updateCategory(id, category));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        Category existingCategory = existingCategoryOpt.get();
-        if (category.getName() != null) existingCategory.setName(category.getName());
-        return ResponseEntity.ok(categoryService.save(existingCategory));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
-        if (!categoryService.findById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<String> deleteCategory(@PathVariable UUID id) {
+        try {
+            categoryService.deleteCategory(id);
+            return ResponseEntity.ok("Category deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("Category not found: " + e.getMessage());
         }
-        categoryService.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 }

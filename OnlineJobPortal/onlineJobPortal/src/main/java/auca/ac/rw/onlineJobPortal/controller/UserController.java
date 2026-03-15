@@ -2,7 +2,6 @@ package auca.ac.rw.onlineJobPortal.controller;
 
 import auca.ac.rw.onlineJobPortal.model.User;
 import auca.ac.rw.onlineJobPortal.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +14,11 @@ import java.util.UUID;
 @RequestMapping("/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+
+    public UserController(UserService userService){
+        this.userService = userService;
+    }
 
   
     @GetMapping
@@ -26,9 +28,14 @@ public class UserController {
 
     
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<?> getUserById(@PathVariable UUID id) {
         Optional<User> user = userService.findById(id);
-        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+
+        if(user.isEmpty()){
+            return ResponseEntity.status(404).body("User not found");
+        }
+
+        return ResponseEntity.ok(user.get());
     }
 
     
@@ -60,7 +67,9 @@ public class UserController {
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody User user) {
         try {
-            return ResponseEntity.ok(userService.save(user));
+            User saved = userService.save(user);
+            return ResponseEntity.status(201)
+                    .body("User created successfully with id: " + saved.getPersonId());
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -69,38 +78,39 @@ public class UserController {
     
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable UUID id, @RequestBody User user) {
-        if (!userService.findById(id).isPresent()) {
+        try {
+            return ResponseEntity.ok(userService.updateUser(id, user));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        user.setPersonId(id);
-        return ResponseEntity.ok(userService.save(user));
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<User> patchUser(@PathVariable UUID id, @RequestBody User user) {
-        Optional<User> existingUserOpt = userService.findById(id);
-        if (!existingUserOpt.isPresent()) {
+    @PutMapping("/{id}/village/{villageId}")
+    public ResponseEntity<User> updateUserVillage(@PathVariable UUID id, @PathVariable Long villageId) {
+        try {
+            return ResponseEntity.ok(userService.updateUserVillage(id, villageId));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        User existingUser = existingUserOpt.get();
-        if (user.getFirstName() != null) existingUser.setFirstName(user.getFirstName());
-        if (user.getLastName() != null) existingUser.setLastName(user.getLastName());
-        if (user.getUsername() != null) existingUser.setUsername(user.getUsername());
-        if (user.getPassword() != null) existingUser.setPassword(user.getPassword());
-        if (user.getRole() != null) existingUser.setRole(user.getRole());
-        if (user.getPhoneNumber() != null) existingUser.setPhoneNumber(user.getPhoneNumber());
-        if (user.getDateOfBirth() != null) existingUser.setDateOfBirth(user.getDateOfBirth());
-        if (user.getVillage() != null) existingUser.setVillage(user.getVillage());
-        return ResponseEntity.ok(userService.save(existingUser));
     }
 
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
-        if (!userService.findById(id).isPresent()) {
+    public ResponseEntity<String> deleteUser(@PathVariable UUID id) {
+        try {
+            userService.deleteUser(id);
+            return ResponseEntity.ok("User deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("User not found: " + e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<User> patchUser(@PathVariable UUID id, @RequestBody User user) {
+        try {
+            return ResponseEntity.ok(userService.updateUser(id, user));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        userService.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 }
