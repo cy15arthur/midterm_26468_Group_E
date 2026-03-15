@@ -24,17 +24,15 @@ public class RecruiterProfileService {
         this.userRepository = userRepository;
     }
 
-    // FIND ALL
     public List<RecruiterProfile> findAll() {
         return recruiterProfileRepository.findAll();
     }
 
-    // FIND BY ID
     public Optional<RecruiterProfile> findById(UUID id) {
         return recruiterProfileRepository.findById(id);
     }
 
-    // CREATE PROFILE (FIXED USER FETCH)
+
     public RecruiterProfile createProfile(RecruiterProfile profile) {
 
         UUID userId = profile.getUser().getPersonId();
@@ -47,7 +45,7 @@ public class RecruiterProfileService {
         return recruiterProfileRepository.save(profile);
     }
 
-    // UPDATE PROFILE
+   
     public RecruiterProfile updateProfile(UUID id, RecruiterProfile profile) {
 
         Optional<RecruiterProfile> existing = recruiterProfileRepository.findById(id);
@@ -60,7 +58,6 @@ public class RecruiterProfileService {
         return recruiterProfileRepository.save(profile);
     }
 
-    // PATCH PROFILE
     public RecruiterProfile patchProfile(UUID id, RecruiterProfile profile) {
 
         Optional<RecruiterProfile> existingOpt = recruiterProfileRepository.findById(id);
@@ -83,7 +80,7 @@ public class RecruiterProfileService {
         return recruiterProfileRepository.save(existing);
     }
 
-    // DELETE PROFILE
+  
     public boolean deleteProfile(UUID id) {
 
         Optional<RecruiterProfile> existing = recruiterProfileRepository.findById(id);
